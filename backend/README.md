@@ -208,17 +208,6 @@ See `.env.example` for all configuration options. Key variables:
 
 The most challenging part was designing the conversation orchestrator to handle the full pipeline — STT, intent detection, LLM tool calling (with the two-pass flow of LLM → tool → LLM), guardrail validation, and TTS — while maintaining clean separation between providers, business logic, and the state machine. Balancing the fallback hierarchy (retry → circuit breaker → fallback provider → safe response) without coupling business logic to any specific AI provider required careful interface design.
 
-## One More Week
-
-With one more week:
-- Add real-time partial transcription streaming via WebSocket
-- Implement proper audio format negotiation (Opus, PCM)
-- Add conversation context compression for long sessions
-- Implement automatic language switching mid-conversation
-- Add agent escalation to human support
-- Implement proper user authentication and session persistence
-- Add comprehensive E2E tests with mocked Sarvam/LLM APIs
-- Add Grafana dashboards for the Prometheus metrics
 
 ## 1,000 Conversations Per Day
 
