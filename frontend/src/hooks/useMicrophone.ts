@@ -2,17 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 export type MicPermission = "prompt" | "granted" | "denied" | "unsupported";
 
-/**
- * Microphone access hook.
- *
- * IMPORTANT: requestAccess() RETURNS the MediaStream. Callers must use the
- * returned value, not the `stream` state, because state only updates on the
- * next render and an in-flight async function never sees it.
- *
- * This hook intentionally does NOT stop tracks on unmount: the call keeps
- * running after the page that requested the mic unmounts (navigation).
- * The call lifecycle owns stopping the tracks.
- */
+
 export function useMicrophone() {
   const streamRef = useRef<MediaStream | null>(null);
 

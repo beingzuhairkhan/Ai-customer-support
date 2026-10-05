@@ -18,9 +18,7 @@ import { useAudioPlayback } from "./useAudioPlayback";
 import type { WsMessage } from "@/types/websocket";
 import type { TranscriptMessage, ToolActivity } from "@/types/transcript";
 
-/* ================================================================
- * CONFIG
- * ================================================================ */
+
 
 const DEBUG = true;
 
@@ -44,17 +42,10 @@ function error(...args: unknown[]) {
   console.error("[useVoiceCall]", ...args);
 }
 
-/* ================================================================
- * IDS
- * ================================================================ */
 
 let messageCounter = 0;
 
 const nextId = () => `msg-${++messageCounter}`;
-
-/* ================================================================
- * MODULE RESOURCES
- * ================================================================ */
 
 const resources: {
   socket: VoiceSocket | null;
@@ -69,30 +60,16 @@ const resources: {
 
   generation: number;
 
-  /**
-   * Backend has explicitly allowed
-   * microphone audio to be sent.
-   */
+
   micListening: boolean;
 
-  /**
-   * Prevent duplicate audio.finished
-   * notifications for the same agent turn.
-   *
-   * IMPORTANT:
-   * This is also reset by VoiceSocket when
-   * a new agent.speaking event starts.
-   */
+
   audioEnded: boolean;
 
-  /**
-   * Browser is currently playing agent audio.
-   */
+
   audioPlaying: boolean;
 
-  /**
-   * Generation of currently playing audio.
-   */
+
   audioGeneration: number;
 } = {
   socket: null,
@@ -116,14 +93,8 @@ const resources: {
   audioGeneration: 0,
 };
 
-/**
- * Latest audio playback instance.
- */
 let audioHandle: ReturnType<typeof useAudioPlayback> | null = null;
 
-/* ================================================================
- * AUDIO HELPERS
- * ================================================================ */
 
 function downsample(
   input: Float32Array,
@@ -197,9 +168,6 @@ function encodeChunk(channelData: Float32Array, inputRate: number): string {
   return bytesToBase64(new Uint8Array(copy.buffer));
 }
 
-/* ================================================================
- * MICROPHONE CONTROL
- * ================================================================ */
 
 function stopSendingMicrophone(): void {
   if (resources.micListening) {
@@ -210,10 +178,7 @@ function stopSendingMicrophone(): void {
 }
 
 function startSendingMicrophone(): void {
-  /**
-   * Never enable microphone while
-   * agent audio is playing.
-   */
+
   if (resources.audioPlaying) {
     warn("Attempted to enable microphone while audio is playing");
 
@@ -233,14 +198,10 @@ function startSendingMicrophone(): void {
   log("Microphone sending ENABLED");
 }
 
-/* ================================================================
- * AUDIO FINISHED
- * ================================================================ */
+
 
 function notifyAudioFinished(generation: number): void {
-  /**
-   * Ignore callbacks from an old call/audio.
-   */
+ 
   if (generation !== resources.generation) {
     log("Ignoring stale audio completion", {
       generation,
@@ -250,10 +211,7 @@ function notifyAudioFinished(generation: number): void {
     return;
   }
 
-  /**
-   * Ignore duplicate browser playback
-   * callbacks.
-   */
+
   if (resources.audioEnded) {
     log("Ignoring duplicate audio completion");
 
@@ -274,32 +232,10 @@ function notifyAudioFinished(generation: number): void {
     return;
   }
 
-  /**
-   * IMPORTANT:
-   *
-   * VoiceSocket internally prevents duplicate
-   * agent.audio.finished events for the
-   * current agent turn.
-   *
-   * It resets that flag automatically when
-   * the next agent.speaking event arrives.
-   */
   socket.notifyAudioFinished();
 
-  /**
-   * Do NOT enable microphone here.
-   *
-   * Backend must first send:
-   *
-   * agent.listening
-   *
-   * which then enables microphone.
-   */
 }
 
-/* ================================================================
- * TEARDOWN CAPTURE
- * ================================================================ */
 
 async function teardownCapture() {
   resources.micListening = false;
@@ -345,9 +281,6 @@ async function teardownCapture() {
   }
 }
 
-/* ================================================================
- * SOCKET TEARDOWN
- * ================================================================ */
 
 function teardownSocket() {
   if (resources.socket) {
@@ -361,14 +294,9 @@ function teardownSocket() {
   }
 }
 
-/* ================================================================
- * ALL RESOURCES
- * ================================================================ */
 
 async function teardownAll() {
-  /**
-   * Invalidate pending playback callbacks.
-   */
+
   ++resources.generation;
 
   resources.audioPlaying = false;
@@ -388,9 +316,6 @@ async function teardownAll() {
   teardownSocket();
 }
 
-/* ================================================================
- * WEBSOCKET HANDLER
- * ================================================================ */
 
 function handleWsMessage(msg: WsMessage) {
   log("WebSocket message:", msg);
@@ -398,16 +323,10 @@ function handleWsMessage(msg: WsMessage) {
   const store = useCallStore.getState();
 
   switch (msg.type) {
-    /* ------------------------------------------------------------
-     * AGENT THINKING
-     * ------------------------------------------------------------ */
+  
 
     case "agent.thinking": {
-      /**
-       * Backend is processing user speech.
-       *
-       * Microphone must remain disabled.
-       */
+    
       stopSendingMicrophone();
 
       store.setVoiceState("THINKING");
@@ -415,25 +334,12 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * AGENT SPEAKING
-     * ------------------------------------------------------------ */
 
     case "agent.speaking": {
-      /**
-       * IMPORTANT:
-       *
-       * Every agent.speaking event represents
-       * a NEW agent response/turn.
-       *
-       * VoiceSocket resets its
-       * agent.audio.finished guard here.
-       */
+     
       resources.socket?.resetAudioFinished();
 
-      /**
-       * Immediately stop microphone.
-       */
+    
       stopSendingMicrophone();
 
       resources.audioPlaying = true;
@@ -449,9 +355,6 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * AGENT AUDIO
-     * ------------------------------------------------------------ */
 
     case "agent.audio": {
       log("Agent audio received:", {
@@ -466,10 +369,7 @@ function handleWsMessage(msg: WsMessage) {
         return;
       }
 
-      /**
-       * NEVER allow microphone input while
-       * agent audio is being played.
-       */
+    
       stopSendingMicrophone();
 
       resources.audioPlaying = true;
@@ -480,9 +380,7 @@ function handleWsMessage(msg: WsMessage) {
 
       resources.audioGeneration = playbackGeneration;
 
-      /**
-       * Play audio.
-       */
+    
       void audioHandle?.play(msg.audio, msg.format, () => {
         notifyAudioFinished(playbackGeneration);
       });
@@ -490,19 +388,11 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * AGENT LISTENING
-     * ------------------------------------------------------------ */
 
     case "agent.listening": {
       log("Backend says LISTENING");
 
-      /**
-       * Safety check.
-       *
-       * Backend should normally send this only
-       * after agent.audio.finished.
-       */
+      
       if (resources.audioPlaying) {
         warn(
           "Backend says LISTENING while audio is still playing; microphone remains disabled",
@@ -520,9 +410,7 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * TRANSCRIPT PARTIAL
-     * ------------------------------------------------------------ */
+ 
 
     case "transcript.partial": {
       const partial: TranscriptMessage = {
@@ -542,9 +430,6 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * TRANSCRIPT FINAL
-     * ------------------------------------------------------------ */
 
     case "transcript.final": {
       const finalMessage: TranscriptMessage = {
@@ -566,9 +451,7 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * INTERRUPTED
-     * ------------------------------------------------------------ */
+
 
     case "agent.interrupted": {
       log("Agent interrupted");
@@ -587,9 +470,7 @@ function handleWsMessage(msg: WsMessage) {
 
       store.setVoiceState("INTERRUPTED");
 
-      /**
-       * Give browser a moment to stop audio.
-       */
+   
       setTimeout(() => {
         if (useCallStore.getState().voiceState !== "INTERRUPTED") {
           return;
@@ -611,9 +492,6 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * TOOL START
-     * ------------------------------------------------------------ */
 
     case "tool.started": {
       const activity: ToolActivity = {
@@ -635,9 +513,6 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * TOOL COMPLETED
-     * ------------------------------------------------------------ */
 
     case "tool.completed": {
       const activities = useCallStore.getState().toolActivities;
@@ -660,9 +535,6 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * SESSION END
-     * ------------------------------------------------------------ */
 
     case "session.end": {
       stopSendingMicrophone();
@@ -678,9 +550,6 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * ERROR
-     * ------------------------------------------------------------ */
 
     case "error": {
       error("Backend WebSocket error:", msg);
@@ -698,9 +567,6 @@ function handleWsMessage(msg: WsMessage) {
       break;
     }
 
-    /* ------------------------------------------------------------
-     * UNKNOWN
-     * ------------------------------------------------------------ */
 
     default: {
       log("Unhandled WebSocket event:", msg);
@@ -708,9 +574,7 @@ function handleWsMessage(msg: WsMessage) {
   }
 }
 
-/* ================================================================
- * HOOK
- * ================================================================ */
+
 
 export function useVoiceCall() {
   const navigate = useNavigate();
@@ -719,10 +583,7 @@ export function useVoiceCall() {
 
   const audio = useAudioPlayback();
 
-  /**
-   * Keep latest playback controller available
-   * to websocket handler.
-   */
+  
   audioHandle = audio;
 
   const micRef = useRef(mic);
@@ -733,9 +594,7 @@ export function useVoiceCall() {
 
   navigateRef.current = navigate;
 
-  /* ==============================================================
-   * START CALL
-   * ============================================================== */
+
 
   const startVoiceCall = useCallback(async () => {
     log("START VOICE CALL");
@@ -752,9 +611,7 @@ export function useVoiceCall() {
 
     const isStale = () => generation !== resources.generation;
 
-    /**
-     * Reset audio state.
-     */
+  
     resources.audioPlaying = false;
 
     resources.audioEnded = true;
@@ -767,9 +624,7 @@ export function useVoiceCall() {
 
     store.setError(null);
 
-    /* ======================================================
-     * 1. MICROPHONE PERMISSION
-     * ====================================================== */
+   
 
     log("Requesting microphone permission...");
 
@@ -807,9 +662,7 @@ export function useVoiceCall() {
       return;
     }
 
-    /* ======================================================
-     * 2. CREATE BACKEND SESSION
-     * ====================================================== */
+   
 
     let session;
 
@@ -864,10 +717,7 @@ export function useVoiceCall() {
 
     store.setCallActive(true);
 
-    /* ======================================================
-     * 3. SOCKET
-     * ====================================================== */
-
+   
     const socket = new VoiceSocket();
 
     resources.socket = socket;
@@ -880,9 +730,7 @@ export function useVoiceCall() {
 
     socket.onMessage(handleWsMessage);
 
-    /* ======================================================
-     * 4. CONNECT
-     * ====================================================== */
+   
 
     try {
       await socket.connect(sessionId);
@@ -914,9 +762,7 @@ export function useVoiceCall() {
       return;
     }
 
-    /* ======================================================
-     * 5. AUDIO CAPTURE
-     * ====================================================== */
+    
 
     try {
       log("Initializing audio input...");
@@ -940,17 +786,12 @@ export function useVoiceCall() {
       const inputRate = audioCtx.sampleRate;
 
       processor.onaudioprocess = (event) => {
-        /**
-         * Final microphone gate.
-         */
+      
         if (!resources.micListening) {
           return;
         }
 
-        /**
-         * Never send microphone
-         * while agent audio plays.
-         */
+      
         if (resources.audioPlaying) {
           return;
         }
@@ -972,17 +813,8 @@ export function useVoiceCall() {
 
       source.connect(processor);
 
-      /**
-       * ScriptProcessorNode needs to be
-       * connected to keep processing.
-       */
       processor.connect(audioCtx.destination);
 
-      /**
-       * Start microphone OFF.
-       *
-       * Backend greeting comes first.
-       */
       stopSendingMicrophone();
 
       log("Audio input initialized", {
@@ -1008,9 +840,6 @@ export function useVoiceCall() {
       return;
     }
 
-    /* ======================================================
-     * 6. REQUEST GREETING
-     * ====================================================== */
 
     log("Requesting initial greeting...");
 
@@ -1018,9 +847,7 @@ export function useVoiceCall() {
 
     socket.startGreeting();
 
-    /* ======================================================
-     * 7. NAVIGATE
-     * ====================================================== */
+   
 
     store.setStarting(false);
 
@@ -1029,9 +856,7 @@ export function useVoiceCall() {
     log("VOICE CALL READY");
   }, []);
 
-  /* ==============================================================
-   * END CALL
-   * ============================================================== */
+
 
   const endVoiceCall = useCallback(async () => {
     const store = useCallStore.getState();
@@ -1050,9 +875,7 @@ export function useVoiceCall() {
 
     store.setVoiceState("ENDING");
 
-    /**
-     * Invalidate pending playback callbacks.
-     */
+
     ++resources.generation;
 
     resources.audioPlaying = false;
@@ -1071,9 +894,6 @@ export function useVoiceCall() {
 
     micRef.current.stop();
 
-    /* ------------------------------------------------------
-     * Backend end call
-     * ------------------------------------------------------ */
 
     try {
       const summary = await endCall(sessionId);
@@ -1091,9 +911,6 @@ export function useVoiceCall() {
       }
     }
 
-    /* ------------------------------------------------------
-     * Transcript
-     * ------------------------------------------------------ */
 
     try {
       const transcript = await getCallTranscript(sessionId);
@@ -1120,9 +937,7 @@ export function useVoiceCall() {
     log("VOICE CALL ENDED");
   }, []);
 
-  /* ==============================================================
-   * MUTE
-   * ============================================================== */
+
 
   const toggleMute = useCallback(() => {
     const store = useCallStore.getState();
@@ -1134,9 +949,7 @@ export function useVoiceCall() {
     store.setMuted(next);
   }, []);
 
-  /* ==============================================================
-   * NEW CALL
-   * ============================================================== */
+
 
   const newCall = useCallback(() => {
     log("Starting new call");
@@ -1158,18 +971,12 @@ export function useVoiceCall() {
     navigateRef.current("/");
   }, []);
 
-  /* ==============================================================
-   * MOUNT
-   * ============================================================== */
 
   useEffect(() => {
     log("useVoiceCall MOUNT");
 
     return () => {
-      /**
-       * Intentionally not tearing down here because
-       * the call may survive route changes.
-       */
+   
       log("useVoiceCall UNMOUNT");
     };
   }, []);

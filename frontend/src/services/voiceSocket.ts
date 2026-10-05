@@ -84,18 +84,7 @@ export class VoiceSocket {
 
   private lastWarnAt = 0;
 
-  /**
-   * Prevent duplicate agent.audio.finished
-   * events for ONE agent speaking turn.
-   *
-   * This MUST be reset whenever a NEW
-   * agent.speaking event starts.
-   */
   private audioFinishedSent = false;
-
-  /* ==============================================================
-   * CONNECT
-   * ============================================================== */
 
   connect(sessionId: string): Promise<void> {
     if (!sessionId) {
@@ -156,9 +145,7 @@ export class VoiceSocket {
 
       this.socket = socket;
 
-      /* --------------------------------------------------------
-       * CONNECT
-       * -------------------------------------------------------- */
+  
 
       socket.on("connect", () => {
         if (this.socket !== socket) {
@@ -180,9 +167,7 @@ export class VoiceSocket {
         }
       });
 
-      /* --------------------------------------------------------
-       * CONNECT ERROR
-       * -------------------------------------------------------- */
+
 
       socket.on("connect_error", (err) => {
         if (this.socket !== socket) {
@@ -202,9 +187,7 @@ export class VoiceSocket {
         }
       });
 
-      /* --------------------------------------------------------
-       * ENGINE OPEN
-       * -------------------------------------------------------- */
+
 
       socket.io.on("open", () => {
         if (this.socket !== socket) {
@@ -240,9 +223,6 @@ export class VoiceSocket {
         });
       });
 
-      /* --------------------------------------------------------
-       * RECONNECT
-       * -------------------------------------------------------- */
 
       socket.io.on("reconnect_attempt", (attempt: number) => {
         if (this.socket !== socket) {
@@ -274,9 +254,7 @@ export class VoiceSocket {
         this.notifyState("error");
       });
 
-      /* --------------------------------------------------------
-       * DISCONNECT
-       * -------------------------------------------------------- */
+
 
       socket.on("disconnect", (reason) => {
         if (this.socket !== socket) {
@@ -292,9 +270,7 @@ export class VoiceSocket {
         this.notifyState("disconnected");
       });
 
-      /* --------------------------------------------------------
-       * ALL EVENTS
-       * -------------------------------------------------------- */
+   
 
       socket.onAny((event: string, data: unknown) => {
         if (this.socket !== socket) {
@@ -337,9 +313,7 @@ export class VoiceSocket {
     });
   }
 
-  /* ==============================================================
-   * GREETING
-   * ============================================================== */
+
 
   startGreeting(): void {
     const socket = this.socket;
@@ -363,15 +337,6 @@ export class VoiceSocket {
     });
   }
 
-  /* ==============================================================
-   * RESET AUDIO FINISHED
-   * ============================================================== */
-
-  /**
-   * Call this when a NEW agent speaking turn begins.
-   *
-   * This is the important fix for multi-turn calls.
-   */
   resetAudioFinished(): void {
     this.audioFinishedSent = false;
 
@@ -380,9 +345,7 @@ export class VoiceSocket {
     });
   }
 
-  /* ==============================================================
-   * AUDIO FINISHED
-   * ============================================================== */
+
 
   notifyAudioFinished(): void {
     const socket = this.socket;
@@ -399,10 +362,7 @@ export class VoiceSocket {
       return;
     }
 
-    /**
-     * Prevent duplicate notification
-     * for the same agent turn.
-     */
+  
     if (this.audioFinishedSent) {
       log("agent.audio.finished already sent for current turn");
 
@@ -422,9 +382,7 @@ export class VoiceSocket {
     });
   }
 
-  /* ==============================================================
-   * SEND AUDIO
-   * ============================================================== */
+
 
   sendAudio(audioBase64: string): void {
     const socket = this.socket;
@@ -458,9 +416,7 @@ export class VoiceSocket {
       });
     }
 
-    /**
-     * Keep volatile for realtime audio.
-     */
+
     socket.volatile.emit("audio.input", {
       sessionId: this.sessionId,
 
@@ -468,9 +424,6 @@ export class VoiceSocket {
     });
   }
 
-  /* ==============================================================
-   * END AUDIO
-   * ============================================================== */
 
   endAudio(): void {
     const socket = this.socket;
@@ -492,9 +445,7 @@ export class VoiceSocket {
     });
   }
 
-  /* ==============================================================
-   * END SESSION
-   * ============================================================== */
+ 
 
   endSession(): void {
     const socket = this.socket;
@@ -514,9 +465,6 @@ export class VoiceSocket {
     });
   }
 
-  /* ==============================================================
-   * MESSAGE HANDLER
-   * ============================================================== */
 
   onMessage(handler: WsMessageHandler): () => void {
     this.handlers.add(handler);
@@ -526,9 +474,6 @@ export class VoiceSocket {
     };
   }
 
-  /* ==============================================================
-   * STATE HANDLER
-   * ============================================================== */
 
   onStateChange(handler: (state: ConnectionState) => void): () => void {
     this.stateHandlers.add(handler);
@@ -538,9 +483,6 @@ export class VoiceSocket {
     };
   }
 
-  /* ==============================================================
-   * DISCONNECT
-   * ============================================================== */
 
   disconnect(): void {
     log("MANUAL DISCONNECT", {
@@ -560,9 +502,6 @@ export class VoiceSocket {
     this.notifyState("disconnected");
   }
 
-  /* ==============================================================
-   * GETTERS
-   * ============================================================== */
 
   get isConnected(): boolean {
     return this.socket?.connected ?? false;
@@ -576,9 +515,6 @@ export class VoiceSocket {
     return this.socket?.id ?? null;
   }
 
-  /* ==============================================================
-   * DESTROY SOCKET
-   * ============================================================== */
 
   private destroySocket(expectedSocket?: Socket): void {
     const socket = expectedSocket ?? this.socket;
@@ -606,9 +542,6 @@ export class VoiceSocket {
     }
   }
 
-  /* ==============================================================
-   * WARN THROTTLE
-   * ============================================================== */
 
   private throttledWarn(message: string): void {
     const now = Date.now();
@@ -620,9 +553,6 @@ export class VoiceSocket {
     }
   }
 
-  /* ==============================================================
-   * STATE
-   * ============================================================== */
 
   private notifyState(state: ConnectionState): void {
     log(`STATE → ${state}`);
